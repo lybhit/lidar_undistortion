@@ -1,0 +1,13 @@
+<launch>
+   <param name="use_sim_time" value="true"/>
+   <!-- <arg name="bag" default="/home/syy001/bags/test/2021-01-24-11-46-14.bag"/> -->
+   <arg name="bag" default="/home/syy001/Downloads/home.bag"/>
+
+   <node name="laserundistortion_node" pkg="laserundistortion"  type="laserundistortion_node" output="screen" >
+     <param name ="scan_time_from_start" value = "true"/>
+   </node>
+
+   <node name="playbag" pkg="rosbag" type="play"
+        args="--clock $(arg bag) -r 1"/>
+
+</launch>

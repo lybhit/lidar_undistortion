@@ -61,20 +61,24 @@ public:
     //声明TF的聆听者、ROS句柄、scan的订阅者
     tf::TransformListener* tf_;
     ros::NodeHandle nh_;
+    ros::NodeHandle private_nh_;
     ros::Subscriber scan_sub_;
     //针对各自的情况需要更改的名字，自行更改
     const std::string scan_frame_name_="laser_link";
     const std::string odom_name_="odom";
     const std::string scan_sub_name_="scan";
+
+    bool scan_time_from_start_;
+
 #if debug_
     //可视化点云对象
     pcl::PointCloud<pcl::PointXYZRGB> visual_cloud_;
 #endif
 };
-
 //构造函数
-LidarMotionCalibrator::LidarMotionCalibrator(tf::TransformListener* tf)
+LidarMotionCalibrator::LidarMotionCalibrator(tf::TransformListener* tf):private_nh_("~")
 {
+    private_nh_.param("scan_time_from_start", scan_time_from_start_, false);
     tf_ = tf;
     scan_sub_ = nh_.subscribe(scan_sub_name_, 10, &LidarMotionCalibrator::ScanCallBack, this);
 }
@@ -88,19 +92,29 @@ LidarMotionCalibrator::~LidarMotionCalibrator()
 void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& scan_msg)
 {
     ros::Time startTime, endTime;
-    //一帧scan的时间戳就代表一帧数据的开始时间
-    startTime = scan_msg->header.stamp;
-    sensor_msgs::LaserScan laserScanMsg = *scan_msg;
-    int beamNum = laserScanMsg.ranges.size();
-    //根据激光时间分割和激光束个数的乘机+startTime得到endTime（最后一束激光束的时间）
-    endTime = startTime + ros::Duration(laserScanMsg.time_increment * beamNum);
-
+    int beamNum = scan_msg->ranges.size();
+    
+    if(scan_time_from_start_)
+    {
+        //一帧scan的时间戳就代表一帧数据的开始时间
+        startTime = scan_msg->header.stamp;
+        // sensor_msgs::LaserScan laserScanMsg = *scan_msg;
+        // int beamNum = laserScanMsg.ranges.size();
+        //根据激光时间分割和激光束个数的乘积+startTime得到endTime（最后一束激光束的时间）
+        endTime = startTime + ros::Duration(scan_msg->time_increment * beamNum);
+    }else{
+        //一帧scan的时间戳就代表一帧数据的结束时间
+        endTime   = scan_msg->header.stamp;
+        //最后一束激光的时间减去扫描时间得到第一束激光的时间
+        startTime = endTime - ros::Duration(scan_msg->time_increment * beamNum);
+    }
+    
     //拷贝数据到angles,ranges
     std::vector<double> angles,ranges;
     for(int i = 0; i < beamNum;i++)
     {
-        double lidar_dist = laserScanMsg.ranges[i];//单位米
-        double lidar_angle = laserScanMsg.angle_min + laserScanMsg.angle_increment * i;//单位弧度
+        double lidar_dist = scan_msg->ranges[i];//单位米
+        double lidar_angle = scan_msg->angle_min + scan_msg->angle_increment * i;//单位弧度
         ranges.push_back(lidar_dist);
         angles.push_back(lidar_angle);
     }
@@ -163,7 +177,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
         //这里的mid_time、start_time多次重复利用
         if(mid_time - start_time > interpolation_time_duration || (i == beamNumber - 1))
         {
-            ROS_INFO("--- for ---");
+            // ROS_INFO("--- for ---");
             cnt++;
             //得到临时结束点的laser_link在里程计坐标系下的位姿，存放到frame_mid_pose
             if(!getLaserPose(frame_mid_pose, ros::Time(mid_time/1000000.0), tf_))
@@ -173,7 +187,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
             }
             //计算该分段需要插值的个数
             int interp_count = i + 1 - start_index ; 
-            ROS_INFO("interp_count = %d", interp_count);
+            // ROS_INFO("interp_count = %d", interp_count);
             //对本分段的激光点进行运动畸变的去除
             Lidar_MotionCalibration(frame_base_pose,  //对于一帧激光雷达数据，传入参数基准坐标系是不变的
                                     frame_start_pose, //每一次的传入，都代表新分段的开始位姿，第一个分段，根据时间戳，在tf树上获得，其他分段都为上一段的结束点传递
