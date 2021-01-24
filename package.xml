@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>LaserUndistortion</name>
+  <name>laserundistortion</name>
   <version>0.0.0</version>
   <description>The LaserUndistortion package</description>
 

@@ -12,9 +12,9 @@
 #define debug_ 1
 
 #if debug_
-#include <pcl-1.7/pcl/point_cloud.h>
+#include <pcl-1.8/pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl-1.7/pcl/visualization/cloud_viewer.h>
+#include <pcl-1.8/pcl/visualization/cloud_viewer.h>
 pcl::visualization::CloudViewer g_PointCloudView("PointCloud View");//初始化一个pcl窗口
 #endif
 
@@ -125,6 +125,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
 {
     //激光束的数量
     int beamNumber = ranges.size();
+    ROS_INFO("beam number_1 = %d", beamNumber);
     //分段时间间隔，单位us
     int interpolation_time_duration = 5 * 1000;//单位us
 
@@ -135,6 +136,10 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
     double start_time = startTime.toSec() * 1000 * 1000;      //*1000*1000转化时间单位为us
     double end_time   = endTime.toSec() * 1000 * 1000;
     double time_inc   = (end_time - start_time) / beamNumber; //每相邻两束激光数据的时间间隔，单位us
+
+    ROS_INFO("start_time = %f", start_time);
+    ROS_INFO("end_time = %f", end_time);
+    ROS_INFO("time_inc = %f", time_inc);
 
     //得到start_time时刻，laser_link在里程计坐标下的位姿，存放到frame_start_pose
     if(!getLaserPose(frame_start_pose, ros::Time(start_time /1000000.0), tf_))
@@ -148,14 +153,17 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
     int start_index = 0;
     //默认基准坐标系就是第一个位姿的坐标系
     frame_base_pose = frame_start_pose;
+    ROS_INFO("beam number = %d", beamNumber);
 
     for(int i = 0; i < beamNumber; i++)
     {
+        ROS_INFO("deal with laser msg");
         //按照分割时间分段，分割时间大小为interpolation_time_duration
         double mid_time = start_time + time_inc * (i - start_index);
         //这里的mid_time、start_time多次重复利用
         if(mid_time - start_time > interpolation_time_duration || (i == beamNumber - 1))
         {
+            ROS_INFO("--- for ---");
             cnt++;
             //得到临时结束点的laser_link在里程计坐标系下的位姿，存放到frame_mid_pose
             if(!getLaserPose(frame_mid_pose, ros::Time(mid_time/1000000.0), tf_))
@@ -165,6 +173,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
             }
             //计算该分段需要插值的个数
             int interp_count = i + 1 - start_index ; 
+            ROS_INFO("interp_count = %d", interp_count);
             //对本分段的激光点进行运动畸变的去除
             Lidar_MotionCalibration(frame_base_pose,  //对于一帧激光雷达数据，传入参数基准坐标系是不变的
                                     frame_start_pose, //每一次的传入，都代表新分段的开始位姿，第一个分段，根据时间戳，在tf树上获得，其他分段都为上一段的结束点传递
@@ -177,6 +186,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
             //更新时间
             start_time = mid_time;
             start_index = i;     
+            ROS_INFO("start_index = %d", start_index);
             frame_start_pose = frame_mid_pose;        //将上一分段的结束位姿，传递为下一分段的开始位姿
         }
     }
@@ -184,6 +194,7 @@ void LidarMotionCalibrator::Lidar_Calibration(std::vector<double>& ranges,std::v
 //从tf缓存数据中，寻找laser_link对应时间戳的里程计位姿
 bool LidarMotionCalibrator::getLaserPose(tf::Stamped<tf::Pose> &odom_pose,ros::Time dt,tf::TransformListener * tf_)
 {
+    ROS_INFO("get laser pose.");
     //初始化
     odom_pose.setIdentity();
     //定义一个 tf::Stamped 对象，构造函数的入口参数（const T& input, const ros::Time& timestamp, const std::string & frame_id）
