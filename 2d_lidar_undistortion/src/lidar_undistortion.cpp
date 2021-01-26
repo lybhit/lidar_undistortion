@@ -88,7 +88,8 @@ public:
 
       // 估计第一个激光点的时刻
       // Estimate the timestamp of the first scan point.
-      ros::Time lidar_timebase = ros::Time::now() - frame_duration - delay_duration;
+      // ros::Time lidar_timebase = ros::Time::now() - frame_duration - delay_duration;
+      ros::Time lidar_timebase = _lidar_msg->header.stamp - frame_duration;
       pcl::PointCloud<pcl::PointXYZI> pointcloud_raw_pcl;
 
       // 将LaserScan类型的数据转化为PCL点云格式
