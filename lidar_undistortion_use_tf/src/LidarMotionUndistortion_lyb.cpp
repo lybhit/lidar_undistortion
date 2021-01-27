@@ -9,7 +9,10 @@
 #include "tf2_ros/message_filter.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2_ros/transform_listener.h"
+#include <pcl_ros/point_cloud.h>
 #include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/PointCloud2.h>
+#include "message_filters/subscriber.h"
 #include <iostream>
 #include <dirent.h>
 #include <fstream>
@@ -25,21 +28,6 @@
 #include <pcl-1.8/pcl/visualization/cloud_viewer.h>
 pcl::visualization::CloudViewer g_PointCloudView("PointCloud View");//初始化一个pcl窗口
 #endif
-
-/***********************************************************************************************************
-  2D激光雷达运动畸变去除例程
-  代码参考自，深蓝学院课程，公众号：小白学移动机器人的作者对其进行了更改和中文注释。
-  =============公众号：小白学移动机器人========================================================================
-  欢迎关注公众号，从此学习的路上变得不再孤单，加油！奥利给！！！
-  2020年11月18日
-***********************************************************************************************************/
-
-/***********************************************************************************************************
-使用说明：
-    （1）将该功能包复制到您的工作空间的src文件夹下，编译
-    （2）首先执行，roslaunch LaserUndistortion LaserUndistortion.launch
-    （3）进入bag目录下，执行rosbag play --clock 2020-03-17-10-23-25.bag 即可
-***********************************************************************************************************/
 
 //雷达运动畸变去除类
 class LidarMotionCalibrator
@@ -60,9 +48,10 @@ public:
     void lidarMotionCalibration(geometry_msgs::PoseStamped frame_base_pose,geometry_msgs::PoseStamped frame_start_pose,geometry_msgs::PoseStamped frame_end_pose,
                                  std::vector<double>& ranges,std::vector<double>& angles,
                                  int startIndex, int& beam_number);
+    void publishPointcloud(const std::vector<double> ranges_, const std::vector<double> angles_, const sensor_msgs::LaserScanConstPtr& scan_msg);
 //使用点云将激光可视化
 #if debug_
-    void visual_cloud_scan(std::vector<double> ranges_,const std::vector<double> angles_,unsigned char r_,unsigned char g_,unsigned char b_);
+    void visual_cloud_scan(const std::vector<double> ranges_, const std::vector<double> angles_,unsigned char r_,unsigned char g_,unsigned char b_);
 #endif 
 public:
     //声明TF的聆听者、ROS句柄、scan的订阅者
@@ -70,7 +59,10 @@ public:
     std::shared_ptr<tf2_ros::TransformListener> tfl_;
     ros::NodeHandle nh_;
     ros::NodeHandle private_nh_;
-    ros::Subscriber scan_sub_;
+    // ros::Subscriber scan_sub_;
+    std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan>> laser_scan_sub_;
+    std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan>> laser_scan_filter_;
+    ros::Publisher pointcloud_pub_;
     //针对各自的情况需要更改的名字，自行更改
     const std::string scan_frame_name_="laser_link";
     const std::string odom_name_="odom";
@@ -89,7 +81,16 @@ LidarMotionCalibrator::LidarMotionCalibrator():private_nh_("~")
     private_nh_.param("scan_time_from_start", scan_time_from_start_, true);
     tf_.reset(new tf2_ros::Buffer());
     tfl_.reset(new tf2_ros::TransformListener(*tf_));
-    scan_sub_ = nh_.subscribe(scan_sub_name_, 10, &LidarMotionCalibrator::ScanCallBack, this);
+    // scan_sub_ = nh_.subscribe(scan_sub_name_, 10, &LidarMotionCalibrator::ScanCallBack, this);
+    laser_scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "scan", 100));
+    laser_scan_filter_.reset(new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
+                                                                                *tf_,
+                                                                                odom_name_,
+                                                                                100,
+                                                                                nh_));
+    laser_scan_filter_->registerCallback(boost::bind(&LidarMotionCalibrator::ScanCallBack, this, _1));
+
+    pointcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("undistortion_pointcloud", 2, true);
 }
 //析构函数
 LidarMotionCalibrator::~LidarMotionCalibrator()
@@ -151,6 +152,7 @@ void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& s
     visual_cloud_scan(ranges,angles,0,255,0);
     g_PointCloudView.showCloud(visual_cloud_.makeShared());
 #endif
+    publishPointcloud(ranges, angles, scan_msg);
 }
 //激光雷达运动畸变去除函数
 void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::vector<double>& angles,ros::Time startTime, const double time_inc, std::shared_ptr<tf2_ros::Buffer> tf_)
@@ -185,7 +187,7 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
 
     for(int i = 0; i < beamNumber; i++)
     {
-        ROS_INFO("deal with laser msg");
+        // ROS_INFO("deal with laser msg");
         //按照分割时间分段，分割时间大小为interpolation_time_duration
         double mid_time = start_time + time_inc_mul * (i - start_index);
         //这里的mid_time、start_time多次重复利用
@@ -213,6 +215,10 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
             start_index = i;   
             ROS_INFO("start_index = %d", start_index);  
             frame_start_pose = frame_mid_pose;        //将上一分段的结束位姿，传递为下一分段的开始位姿
+            
+            double yaw = tf2::getYaw(frame_mid_pose.pose.orientation);
+            ROS_INFO("current index pose info: x = %f, y = %f, yaw = %f", frame_mid_pose.pose.position.x, frame_mid_pose.pose.position.y, yaw);
+            
         }
     }
 
@@ -242,7 +248,7 @@ bool LidarMotionCalibrator::getLaserPose(geometry_msgs::PoseStamped &odom_pose,r
         double delta_time = (ros::Time::now() - dt).toSec();
         ROS_INFO("delta_time = %f", delta_time);
 
-        tf_->transform(ident, odom_pose, odom_name_);
+        tf_->transform(ident, odom_pose, odom_name_, ros::Duration(0.1));
         
     }
     catch(const tf2::TransformException & e)
@@ -258,6 +264,7 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
                                                     std::vector<double>& ranges,std::vector<double>& angles,
                                                     int startIndex,int& beam_number)
 {
+    ROS_INFO("-----");
     //beam_step插值函数所用的步长
     double beam_step = 1.0 / (beam_number-1);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度 和 结束角度，四元数表示
@@ -343,6 +350,8 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
             angles[startIndex+i] = lidar_angle;
         }
     }
+
+    ROS_INFO("****");
 }
 
 //使用点云将激光可视化
@@ -369,6 +378,30 @@ void LidarMotionCalibrator::visual_cloud_scan(std::vector<double> ranges_,const 
 
 }
 #endif 
+
+void LidarMotionCalibrator::publishPointcloud(const std::vector<double> ranges_, const std::vector<double> angles_, const sensor_msgs::LaserScanConstPtr& scan_msg)
+{
+    static auto laser_in_base = tf_->lookupTransform("base_link", scan_msg->header.frame_id, ros::Time(0));
+    static float x = laser_in_base.transform.translation.x;
+    static float y = laser_in_base.transform.translation.y;
+    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
+    pcl_cloud.width = ranges_.size();
+    pcl_cloud.height = 1;
+    pcl_cloud.resize(ranges_.size());
+    sensor_msgs::PointCloud2 filter_cloud;
+
+    for (int i = 0; i < ranges_.size(); ++i) {
+        pcl_cloud.points[i].x = ranges_[i] * cos(angles_[i]);;
+        pcl_cloud.points[i].y = ranges_[i] * sin(angles_[i]);
+        pcl_cloud.points[i].z = 0;
+    }
+
+    pcl::toROSMsg(pcl_cloud, filter_cloud);
+    filter_cloud.header.frame_id = "laser_link";
+    filter_cloud.header.stamp = scan_msg->header.stamp;
+    pointcloud_pub_.publish(filter_cloud);
+    ROS_INFO("filter_cloud size = %d", filter_cloud.data.size());
+}
 
 int main(int argc,char ** argv)
 {
