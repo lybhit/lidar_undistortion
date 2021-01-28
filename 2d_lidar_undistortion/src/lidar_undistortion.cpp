@@ -84,11 +84,18 @@ public:
 
       // 当前激光帧从头到尾的时间
       // The overall scan time of current laserscan message(duration from the first scan point to the last).
-      frame_duration = ros::Duration(_lidar_msg->scan_time);
+      if(_lidar_msg->scan_time != 0)
+      {
+        frame_duration = ros::Duration(_lidar_msg->scan_time);
+      }else{
+        frame_duration = ros::Duration(_lidar_msg->time_increment * (length - 1));
+      }
 
       // 估计第一个激光点的时刻
       // Estimate the timestamp of the first scan point.
-      ros::Time lidar_timebase = ros::Time::now() - frame_duration - delay_duration;
+      // ros::Time lidar_timebase = ros::Time::now() - frame_duration - delay_duration;
+      // ros::Time lidar_timebase =  _lidar_msg->header.stamp;
+      ros::Time lidar_timebase =  _lidar_msg->header.stamp - frame_duration;
       pcl::PointCloud<pcl::PointXYZI> pointcloud_raw_pcl;
 
       // 将LaserScan类型的数据转化为PCL点云格式
@@ -110,6 +117,8 @@ public:
 
         current_output_timestamp = imuCircularBuffer_[0].header.stamp;
         Eigen::Quaternionf current_quat = ImuToCurrentQuaternion(imuCircularBuffer_[0].orientation);
+        Eigen::Vector3f eulerAngle= current_quat.matrix().eulerAngles(2,1,0);
+        std::cout << "start pose angle = " << eulerAngle << std::endl;
 
         for (int i = 0; i < length; i++)
         {
@@ -125,6 +134,18 @@ public:
           if (getLaserPose(i, point_timestamp, point_quat) == true)
           {
             Eigen::Quaternionf delta_quat = current_quat.inverse() * point_quat;
+            if(i == 0)
+            {
+              Eigen::Vector3f eulerAngle_1 = current_quat.matrix().eulerAngles(2,1,0);
+              // ROS_INFO("index 0 angle = %f, %f, %f", eulerAngle_1(0), eulerAngle_1(1), eulerAngle_1(2));
+              std::cout << "index 0 angle = " << eulerAngle_1 << std::endl;
+            }
+            
+            if(i % 100 == 0)
+            {
+              Eigen::Vector3f eulerAngle_1 = point_quat.matrix().eulerAngles(2,1,0);
+              std::cout << "index " << i << "angle = " << eulerAngle_1 << std::endl;
+            }
 
             Eigen::Vector3f point_out = delta_quat * point_in;
 
@@ -179,7 +200,7 @@ public:
     */
     bool getLaserPose(int point_index, ros::Time &_timestamp, Eigen::Quaternionf &quat_out)
     {
-      cout << "point_index = " << point_index << endl;
+      // cout << "point_index = " << point_index << endl;
       static int index_front = 0;
       static int index_back = 0;
       static ros::Time timestamp_front;
@@ -234,6 +255,10 @@ public:
       }
 
       float alpha = (float)(_timestamp.toNSec() - timestamp_back.toNSec()) / (timestamp_front.toNSec() - timestamp_back.toNSec());
+      if(point_index % 100 == 0)
+      {
+        std::cout << "slerp alpha = " << alpha << std::endl;
+      }
 
       if (alpha < 0)
       {
@@ -255,7 +280,8 @@ public:
       double newPointAngle;
 
       int beamNum = _laser_scan->ranges.size();
-
+      
+      //如果设置顺时针，则读取数据顺序为从scan数据中从n -> 0
       if (scan_direction_clockwise_ == true)
       {
         for (int i = beamNum - 1; i >= 0; i--)
@@ -267,6 +293,7 @@ public:
           _pointcloud.push_back(newPoint);
         }
       }
+      //如果设置逆时针，则读取数据顺序为从scan数据中从0 -> n
       else
       {
         for (int i = 0; i < beamNum; i++)
@@ -457,5 +484,3 @@ int main(int argc,char ** argv)
 
     return 0;
 }
-
-
