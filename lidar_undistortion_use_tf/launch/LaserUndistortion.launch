@@ -1,8 +1,15 @@
 <launch>
-   <param name="use_sim_time" value="true"/>
-   <arg name="bag" default="/home/syy001/localization_test/src/LaserUndistortion/bag/2020-03-17-10-23-25.bag"/>
 
-   <node name="laserundistortion_node" pkg="laserundistortion"  type="laserundistortion_node" output="screen" />
+   <env  name="ROSCONSOLE_CONFIG_FILE" value="$(find laserundistortion)/config/roslog.config" />
+   <param name="use_sim_time" value="true"/>
+   <!-- <arg name="bag" default="/home/lyb/loc_test/src/lidar_undistortion/lidar_undistortion_use_tf/bag/2020-03-17-10-23-25.bag"/> -->
+   <!-- <arg name="bag" default="/home/lyb/bags/2021/rotate_2021-01-27-11-19-12.bag"/> -->
+   <arg name="bag" default="/home/lyb/bags/2021/e100_3d_2021-01-27-21-58-00.bag"/>
+
+   <node name="laserundistortion_lyb_node" pkg="laserundistortion"  type="laserundistortion_lyb_node" output="screen" >
+      <param name="scan_time_from_start" value="false" />
+      <param name="show_part_info" value="false" />
+   </node>
 
    <node name="playbag" pkg="rosbag" type="play"
         args="--clock $(arg bag) "/>

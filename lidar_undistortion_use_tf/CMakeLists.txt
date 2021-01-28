@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   tf
+  tf2
+  tf2_ros
   sensor_msgs
   nav_msgs
 )
@@ -55,6 +57,7 @@ message(status  ${PCL_INCLUDE_DIRS})
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/LidarMotionUndistortion.cpp)
+add_executable(${PROJECT_NAME}_lyb_node src/LidarMotionUndistortion_lyb.cpp)
 
 
 ## Specify libraries to link a library or executable target against
@@ -63,6 +66,10 @@ add_executable(${PROJECT_NAME}_node src/LidarMotionUndistortion.cpp)
   ${PCL_LIBRARIES}
  )
 
+ target_link_libraries(${PROJECT_NAME}_lyb_node
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+ )
 #############
 ## Install ##
 #############
