@@ -41,7 +41,7 @@ public:
     void ScanCallBack(const sensor_msgs::LaserScanConstPtr& scan_msg);
     //激光雷达运动畸变去除函数
 
-    void lidarCalibration(std::vector<double>& ranges,std::vector<double>& angles,ros::Time startTime, const double time_inc, std::shared_ptr<tf2_ros::Buffer> tf_);
+    void lidarCalibration(std::vector<double>& ranges,std::vector<double>& angles,ros::Time startTime, const double time_inc, std::shared_ptr<tf2_ros::Buffer> tf_, ros::Time endTime);
     //从tf缓存数据中，寻找对应时间戳的里程计位姿
     bool getLaserPose(geometry_msgs::PoseStamped &odom_pose,ros::Time dt,std::shared_ptr<tf2_ros::Buffer> tf_);
     //根据传入参数，对任意一个分段进行插值
@@ -106,21 +106,6 @@ void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& s
     ros::Time startTime, endTime;
     int beamNum = scan_msg->ranges.size();
     ROS_INFO("scan msg stamp = %f", scan_msg->header.stamp);
-    
-    // if(scan_time_from_start_)
-    // {
-    //     //一帧scan的时间戳就代表一帧数据的开始时间
-    //     startTime = scan_msg->header.stamp;
-    //     // sensor_msgs::LaserScan laserScanMsg = *scan_msg;
-    //     // int beamNum = laserScanMsg.ranges.size();
-    //     //根据激光时间分割和激光束个数的乘积+startTime得到endTime（最后一束激光束的时间）
-    //     endTime = startTime + ros::Duration(scan_msg->time_increment * beamNum);
-    // }else{
-    //     //一帧scan的时间戳就代表一帧数据的结束时间
-    //     endTime   = scan_msg->header.stamp;
-    //     //最后一束激光的时间减去扫描时间得到第一束激光的时间
-    //     startTime = endTime - ros::Duration(scan_msg->time_increment * beamNum);
-    // }
 
     sensor_msgs::LaserScan cut_scan = *scan_msg;
     int length = cut_scan.ranges.size();
@@ -167,7 +152,7 @@ void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& s
         // end_time = laser_scan->header.stamp;
     }
     //激光雷达运动畸变去除函数
-    lidarCalibration(ranges, angles, start_time, scan_msg->time_increment, tf_);
+    lidarCalibration(ranges, angles, start_time, scan_msg->time_increment, tf_, scan_msg->header.stamp);
 
 #if debug_
     //数据矫正后、封装打算点云可视化、绿色
@@ -177,7 +162,7 @@ void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& s
     publishPointcloud(ranges, angles, scan_msg);
 }
 //激光雷达运动畸变去除函数
-void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::vector<double>& angles,ros::Time startTime, const double time_inc, std::shared_ptr<tf2_ros::Buffer> tf_)
+void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::vector<double>& angles,ros::Time startTime, const double time_inc, std::shared_ptr<tf2_ros::Buffer> tf_, const ros::Time endTime)
 {
     //激光束的数量
     int beamNumber = ranges.size();
@@ -200,12 +185,26 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
         ROS_WARN("Not Start Pose,Can not Calib");
         return ;
     }
+
+    ROS_INFO("------------");
+    ROS_INFO("end time = %f", endTime);
+    ROS_INFO("------------");
+
+    //直接获取最后一束激光作为基准坐标原点位姿
+    if(!getLaserPose(frame_base_pose, endTime, tf_))
+    {
+        ROS_WARN("Not Start Pose,Can not Calib");
+        return ;
+    }
+
+    ROS_INFO("time inc * beamNumber = %f", time_inc * beamNumber);
     //分段个数计数
     int cnt = 0;
     //当前插值的段的起始坐标
     int start_index = 0;
     //默认基准坐标系就是第一个位姿的坐标系
-    frame_base_pose = frame_start_pose;
+    //把基准坐标系设定为激光的最后一个位姿
+    // frame_base_pose = frame_start_pose;
 
     for(int i = 0; i < beamNumber; i++)
     {
@@ -259,19 +258,7 @@ bool LidarMotionCalibrator::getLaserPose(geometry_msgs::PoseStamped &odom_pose,r
     // tf::Stamped <tf::Pose> tmp(odom_pose, dt, scan_frame_name_);
     try
     {
-        //阻塞直到可能进行转换或超时，解决时间不同步问题
-        // if(!tf_->lookupTransform(odom_name_, scan_frame_name_, dt)             // 0.15s 的时间可以修改
-        // {
-        //     ROS_ERROR("LidarMotion-Can not Wait Transform()");
-        //     return false;
-        // }
-        // //转换一个带时间戳的位姿到目标坐标系odom_name_的位姿输出到odom_pose
-        // tf_->transformPose(odom_name_, tmp, odom_pose);
-        double delta_time = (ros::Time::now() - dt).toSec();
-        ROS_INFO("delta_time = %f", delta_time);
-
-        tf_->transform(ident, odom_pose, odom_name_, ros::Duration(0.1));
-        
+        tf_->transform(ident, odom_pose, odom_name_, ros::Duration(0.1));        
     }
     catch(const tf2::TransformException & e)
     {
