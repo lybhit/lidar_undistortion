@@ -1,0 +1,16 @@
+<launch>
+  
+  <node pkg="tf" type="static_transform_publisher" name="laser_link_broadcaster" args="0 0 0.17 0 0 0  base_link laser_link 10" />
+
+  <node pkg="tf" type="static_transform_publisher" name="imu_link_broadcaster" args="0 0 1 0 0 0 base_link imu_link 10" />
+
+  <node pkg="simulate_data" type="scan_node" name="scan_node" >
+     <param name="laser_frequency" value="20" />
+  </node>
+
+  <node pkg="simulate_data" type="imu_node" name="imu_node" />
+
+  <node pkg="simulate_data" type="odom_node" name="odom_node" />
+
+
+</launch>

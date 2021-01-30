@@ -41,62 +41,67 @@ class ImuNode
     {
     }
 
-    void update(const ros::TimerEvent& te)
+    int getImuPubFrequency()
     {
-
-            /* Fill the IMU message */
-
-            // Fill the header
-            imu_msg.header.stamp = ros::Time::now();
-            imu_msg.header.frame_id = frame_id_;
-
-            // Fill orientation quaternion
-            double delta_time = (ros::Time::now() - last_pub_time_).toSec();
-            last_pub_time_ = ros::Time::now();
-
-            angle_val_ += angular_z_ * delta_time;
-
-            if(angle_val_ > M_1_PI)
-            {
-                angle_val_ -= 2 * M_1_PI;
-            }else if(angle_val_ < -M_1_PI)
-            {
-                angle_val_ += 2 * M_1_PI;
-            }
-
-            geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(angle_val_);
-            imu_msg.orientation.w = odom_quat.w;
-            imu_msg.orientation.x = odom_quat.x;
-            imu_msg.orientation.y = odom_quat.y;
-            imu_msg.orientation.z = odom_quat.z;
-
-            // Fill angular velocity data
-            // - scale from deg/s to rad/s
-            imu_msg.angular_velocity.x = 0.0;
-            imu_msg.angular_velocity.y = 0.0;
-            imu_msg.angular_velocity.z = angular_z_;
-
-            // Fill linear acceleration data
-            imu_msg.linear_acceleration.x = 0;
-            imu_msg.linear_acceleration.y = 0;
-            imu_msg.linear_acceleration.z = 0;
-
-            // \TODO: Fill covariance matrices
-            // msg.orientation_covariance = ...
-            // msg.angular_velocity_covariance = ...
-            // msg linear_acceleration_covariance = ...
-
-            // Publish the messages
-            imu_pub_.publish(imu_msg);
+        return rate_;
     }
 
-    void run(void)
+    void update()
     {
-        // The timer ensures periodic data publishing
-        updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(0.1/rate_),
-                                                &ImuNode::update,
-                                                this));
+
+        /* Fill the IMU message */
+
+        // Fill the header
+        imu_msg.header.stamp = ros::Time::now();
+        imu_msg.header.frame_id = frame_id_;
+
+        // Fill orientation quaternion
+        double delta_time = (ros::Time::now() - last_pub_time_).toSec();
+        last_pub_time_ = ros::Time::now();
+
+        angle_val_ += angular_z_ * delta_time;
+
+        if(angle_val_ > M_1_PI)
+        {
+            angle_val_ -= 2 * M_1_PI;
+        }else if(angle_val_ < -M_1_PI)
+        {
+            angle_val_ += 2 * M_1_PI;
+        }
+
+        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(angle_val_);
+        imu_msg.orientation.w = odom_quat.w;
+        imu_msg.orientation.x = odom_quat.x;
+        imu_msg.orientation.y = odom_quat.y;
+        imu_msg.orientation.z = odom_quat.z;
+
+        // Fill angular velocity data
+        // - scale from deg/s to rad/s
+        imu_msg.angular_velocity.x = 0.0;
+        imu_msg.angular_velocity.y = 0.0;
+        imu_msg.angular_velocity.z = angular_z_;
+
+        // Fill linear acceleration data
+        imu_msg.linear_acceleration.x = 0;
+        imu_msg.linear_acceleration.y = 0;
+        imu_msg.linear_acceleration.z = 0;
+
+        // \TODO: Fill covariance matrices
+        // msg.orientation_covariance = ...
+        // msg.angular_velocity_covariance = ...
+        // msg linear_acceleration_covariance = ...
+
+        // Publish the messages
+        imu_pub_.publish(imu_msg);
     }
+
+    // void run(void)
+    // {
+    //     // The timer ensures periodic data publishing
+    //     updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(0.1/rate_),
+    //                                             &ImuNode::update,
+    //                                             this));
+    // }
 
  private:
 
@@ -123,9 +128,20 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "simulate_imu");
 
     ImuNode imu_node;
-    imu_node.run();
+    // imu_node.run();
 
-    ros::spin();
+    ros::Rate rate(imu_node.getImuPubFrequency());
+
+    while(ros::ok())
+    {
+        imu_node.update();
+
+        rate.sleep();
+
+        ros::spinOnce();
+    }
+
+    // ros::spin();
 
     return 0;
 }

@@ -9,7 +9,8 @@ public:
   OdomNode();
   ~OdomNode();
 
-  void publishOdomMsg(const ros::TimerEvent& te);
+  void publishOdomMsg();
+  int getPubFrequency();
   void run(void);
 
 private:
@@ -47,7 +48,12 @@ OdomNode::~OdomNode()
 
 }
 
-void OdomNode::publishOdomMsg(const ros::TimerEvent& te)
+int OdomNode::getPubFrequency()
+{
+    return rate_;
+}
+
+void OdomNode::publishOdomMsg()
 {    
     current_time_ = ros::Time::now();
 
@@ -101,21 +107,32 @@ void OdomNode::publishOdomMsg(const ros::TimerEvent& te)
     last_time_ = current_time_;
 }
 
-void OdomNode::run(void)
-{
-    // The timer ensures periodic data publishing
-    updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(1/rate_),
-                                            &OdomNode::publishOdomMsg,
-                                            this));
-}
+// void OdomNode::run(void)
+// {
+//     // The timer ensures periodic data publishing
+//     updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(1/rate_),
+//                                             &OdomNode::publishOdomMsg,
+//                                             this));
+// }
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "odometry");
 
   OdomNode odom_node;
-  odom_node.run();
+  // odom_node.run();
 
-  ros::spin();
+  ros::Rate rate(odom_node.getPubFrequency());
+
+  while(ros::ok())
+  {
+      odom_node.publishOdomMsg();
+
+      rate.sleep();
+
+      ros::spinOnce();
+  }
+
+  // ros::spin();
 
   return 0;
 }
