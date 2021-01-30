@@ -7,8 +7,9 @@ public:
     ScanNode();
     ~ScanNode();
     
-    void publishScanMsg(const ros::TimerEvent& te);
-    void run();
+    // void publishScanMsg(const ros::TimerEvent& te);
+    void publishScanMsg();
+    // void run();
 private:
     ros::NodeHandle nh_;
     ros::NodeHandle private_nh_;
@@ -24,7 +25,7 @@ private:
 
 ScanNode::ScanNode(): private_nh_("~")
 {
-    private_nh_.param("laser_frequency", laser_frequency_, 50);
+    private_nh_.param("laser_frequency", laser_frequency_, 20);
     private_nh_.param("num_readings", num_readings_, 100);
     private_nh_.param("range", range_, 50.0);
 
@@ -36,7 +37,7 @@ ScanNode::~ScanNode()
 
 }
 
-void ScanNode::publishScanMsg(const ros::TimerEvent& te)
+void ScanNode::publishScanMsg()
 {
     double ranges[num_readings_];
     double intensities[num_readings_];
@@ -51,7 +52,7 @@ void ScanNode::publishScanMsg(const ros::TimerEvent& te)
     //populate the LaserScan message
     sensor_msgs::LaserScan scan;
     scan.header.stamp = scan_time;
-    scan.header.frame_id = "base_link";
+    scan.header.frame_id = "laser_link";
     scan.angle_min = -1.57;
     scan.angle_max = 1.57;
     scan.angle_increment = 3.14 / num_readings_;
@@ -70,21 +71,32 @@ void ScanNode::publishScanMsg(const ros::TimerEvent& te)
     
 }
 
-void ScanNode::run(void)
-{
-    // The timer ensures periodic data publishing
-    updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(1/laser_frequency_),
-                                            &ScanNode::publishScanMsg,
-                                            this));
-}
+// void ScanNode::run(void)
+// {
+//     // The timer ensures periodic data publishing
+//     updateTimer_ = ros::Timer(nh_.createTimer(ros::Duration(1/laser_frequency_),
+//                                             &ScanNode::publishScanMsg,
+//                                             this));
+// }
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "laser_scan_publisher");
 
     ScanNode scan_node;
-    scan_node.run();
+    // scan_node.run();
 
-    ros::spin();
+    ros::Rate rate(20);
+
+    while(ros::ok())
+    {
+        scan_node.publishScanMsg();
+
+        rate.sleep();
+
+        ros::spinOnce();
+    }
+
+    // ros::spin();
     return 0;
 }
