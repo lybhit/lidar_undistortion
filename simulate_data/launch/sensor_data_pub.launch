@@ -5,12 +5,19 @@
   <node pkg="tf" type="static_transform_publisher" name="imu_link_broadcaster" args="0 0 1 0 0 0 base_link imu_link 10" />
 
   <node pkg="simulate_data" type="scan_node" name="scan_node" >
-     <param name="laser_frequency" value="20" />
+     <param name="laser_frequency" value="1" />
+     <param name="range" value="10" />
   </node>
 
-  <node pkg="simulate_data" type="imu_node" name="imu_node" />
+  <node pkg="simulate_data" type="imu_node" name="imu_node" >
+    <param name="rate" value="200" />
+  </node>
 
-  <node pkg="simulate_data" type="odom_node" name="odom_node" />
+  <node pkg="simulate_data" type="odom_node" name="odom_node" >
+    <param name="rate" value="20" />
+    <param name="vx" value="0.0" />
+    <param name="vth" value="1.0" />
+  </node>
 
 
 </launch>
