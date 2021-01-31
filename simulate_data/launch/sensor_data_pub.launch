@@ -11,12 +11,15 @@
 
   <node pkg="simulate_data" type="imu_node" name="imu_node" >
     <param name="rate" value="200" />
+    <param name="angular_z" value="0.0" />
+
   </node>
 
   <node pkg="simulate_data" type="odom_node" name="odom_node" >
     <param name="rate" value="20" />
     <param name="vx" value="0.0" />
-    <param name="vth" value="1.0" />
+    <param name="vy" value="0.0" />
+    <param name="vth" value="-1.0" />
   </node>
 
 

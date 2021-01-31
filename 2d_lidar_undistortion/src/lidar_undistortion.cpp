@@ -63,7 +63,7 @@ public:
 
       delay_duration = ros::Duration(lidar_msg_delay_time_ / 1000.0);
 
-      imuCircularBuffer_ = ImuCircularBuffer((int)(imu_frequency_ * 1.5));
+      imuCircularBuffer_ = ImuCircularBuffer((int)(imu_frequency_ * 4));
     }
 
 
@@ -81,6 +81,7 @@ public:
     {
       // 激光点的个数
       int length = _lidar_msg->ranges.size();
+      ROS_INFO("scan range size = %d", length);
 
       // 当前激光帧从头到尾的时间
       // The overall scan time of current laserscan message(duration from the first scan point to the last).
@@ -88,6 +89,7 @@ public:
       {
         frame_duration = ros::Duration(_lidar_msg->scan_time);
       }else{
+        ROS_INFO("scan time = %f", _lidar_msg->scan_time);
         frame_duration = ros::Duration(_lidar_msg->time_increment * (length - 1));
       }
 
@@ -133,18 +135,20 @@ public:
           // 如果成功获取当前扫描点的姿态
           if (getLaserPose(i, point_timestamp, point_quat) == true)
           {
-            Eigen::Quaternionf delta_quat = current_quat.inverse() * point_quat;
-            if(i == 0)
-            {
-              Eigen::Vector3f eulerAngle_1 = current_quat.matrix().eulerAngles(2,1,0);
-              // ROS_INFO("index 0 angle = %f, %f, %f", eulerAngle_1(0), eulerAngle_1(1), eulerAngle_1(2));
-              std::cout << "index 0 angle = " << eulerAngle_1 << std::endl;
-            }
+
+            // Eigen::Quaternionf delta_quat = current_quat.inverse() * point_quat;
+            Eigen::Quaternionf delta_quat = current_quat.conjugate() * point_quat;
+            Eigen::Vector3f deltaAngle= delta_quat.matrix().eulerAngles(2,1,0);
+            Eigen::Vector3f current_inv_angle= current_quat.conjugate().matrix().eulerAngles(2,1,0);
+
             
-            if(i % 100 == 0)
+            if(i % 10 == 0)
             {
               Eigen::Vector3f eulerAngle_1 = point_quat.matrix().eulerAngles(2,1,0);
-              std::cout << "index " << i << "angle = " << eulerAngle_1 << std::endl;
+              std::cout << "current inverse angle = " << current_inv_angle << std::endl;
+
+              std::cout << "index " << i << " angle = " << eulerAngle_1 << std::endl;
+              std::cout << "delta angle = " << deltaAngle << std::endl;
             }
 
             Eigen::Vector3f point_out = delta_quat * point_in;
@@ -161,9 +165,11 @@ public:
           }
         }
 
-        ApplyRangeFilter(pointcloud_pcl);
-        ApplyAngleFilter(pointcloud_pcl);
-        ApplyRadiusOutlierFilter(pointcloud_pcl);
+        ROS_INFO("point cloud size = %d", pointcloud_pcl.size());
+
+        // ApplyRangeFilter(pointcloud_pcl);
+        // ApplyAngleFilter(pointcloud_pcl);
+        // ApplyRadiusOutlierFilter(pointcloud_pcl);
 
         pcl::toROSMsg(pointcloud_pcl, pointcloud_msg);
         pointcloud_msg.header.frame_id = output_frame_id_;
@@ -255,7 +261,7 @@ public:
       }
 
       float alpha = (float)(_timestamp.toNSec() - timestamp_back.toNSec()) / (timestamp_front.toNSec() - timestamp_back.toNSec());
-      if(point_index % 100 == 0)
+      if(point_index % 10 == 0)
       {
         std::cout << "slerp alpha = " << alpha << std::endl;
       }
@@ -274,6 +280,7 @@ public:
 
     void LaserScanToPointCloud(sensor_msgs::LaserScan::ConstPtr _laser_scan, pcl::PointCloud<pcl::PointXYZI>& _pointcloud)
     {
+      ROS_INFO("laser scan to pointcloud.");
       _pointcloud.clear();
       pcl::PointXYZI newPoint;
       newPoint.z = 0.0;
@@ -348,6 +355,7 @@ public:
       }
 
       unsigned int beam_size = ceil((angle_max - angle_min) / laserscan_angle_increment_);
+      ROS_INFO("if publish scan, beam size = %d", beam_size);
 
       sensor_msgs::LaserScan output;
       output.header.stamp = current_output_timestamp;

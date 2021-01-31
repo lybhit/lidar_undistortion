@@ -1,0 +1,45 @@
+<launch>
+
+  <arg name="rviz_display" default="true"/>
+
+  <node name="lidar_undistortion_node" pkg="lidar_undistortion"  type="lidar_undistortion" output="screen">
+
+    <param name="lidar_topic" value="/scan"/>
+    <!-- Estimated time of lidar message transmission(ms) -->
+    <param name="lidar_msg_delay_time" value="10.0"/>
+
+    <param name="scan_direction_clockwise" value="true"/>
+
+    <param name="imu_topic" value="imu/data"/>
+    <param name="imu_frequency" value="200.0"/>
+
+    <param name="output_frame_id" value="/laser_link"/>
+    <param name="pub_raw_scan_pointcloud" value="true"/>
+
+    <param name="pub_laserscan" value="true"/>
+    <param name="laserscan_angle_increment" value="0.0314"/>
+
+    <param name="use_range_filter" value="true"/>
+    <param name="range_filter_min" value="0.2"/>
+    <param name="range_filter_max" value="20.0"/>
+
+    <param name="use_angle_filter" value="true"/>
+    <param name="angle_filter_min" value="-1.57"/>
+    <param name="angle_filter_max" value="1.57"/>
+
+    <param name="use_radius_outlier_filter" value="true"/>
+    <param name="radius_outlier_filter_search_radius" value="0.1"/>
+    <param name="radius_outlier_filter_min_neighbors" value="2"/>
+
+  </node>
+
+  <!-- <include file="$(find xsens_driver)/launch/xsens1.launch"/> -->
+
+  <!-- <include file="$(find rplidar_ros)/launch/rplidar.launch"/> -->
+
+  <!-- <group if="$(arg rviz_display)">
+     <node pkg="rviz" type="rviz" name="rviz"
+       args="-d $(find livox_undistortion)/rviz/livox_undistortion.rviz" />
+  </group> -->
+
+</launch>
