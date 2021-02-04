@@ -156,6 +156,7 @@ void LidarMotionCalibrator::ScanCallBack(const sensor_msgs::LaserScanConstPtr& s
 
 #if debug_
     //数据矫正后、封装打算点云可视化、绿色
+    ROS_INFO("OOOOOOOOOO");
     visual_cloud_scan(ranges,angles,0,255,0);
     g_PointCloudView.showCloud(visual_cloud_.makeShared());
 #endif
@@ -193,7 +194,7 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
     //直接获取最后一束激光作为基准坐标原点位姿
     if(!getLaserPose(frame_base_pose, endTime, tf_))
     {
-        ROS_WARN("Not Start Pose,Can not Calib");
+        ROS_WARN("Not Base Pose,Can not Calib");
         return ;
     }
 
@@ -211,6 +212,8 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
         // ROS_INFO("deal with laser msg");
         //按照分割时间分段，分割时间大小为interpolation_time_duration
         double mid_time = start_time + time_inc_mul * (i - start_index);
+        ROS_INFO_STREAM_COND(i%10 == 0, "mid_time= " << mid_time);
+
         //这里的mid_time、start_time多次重复利用
         if(mid_time - start_time > interpolation_time_duration || (i == beamNumber - 1))
         {
@@ -276,12 +279,13 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
     ROS_INFO("-----");
     //beam_step插值函数所用的步长
     double beam_step = 1.0 / (beam_number-1);
+    ROS_INFO("beam_number = %f", beam_step);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度 和 结束角度，四元数表示
     tf2::Quaternion start_angle_q;
     tf2::convert(frame_start_pose.pose.orientation, start_angle_q);
 
     tf2::Quaternion end_angle_q;
-    tf2::convert(frame_start_pose.pose.orientation, end_angle_q);
+    tf2::convert(frame_end_pose.pose.orientation, end_angle_q);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度、该帧激光数据在里程计坐标系下基准坐标系位姿的角度，弧度表示
     double  start_angle_r = tf2::getYaw(start_angle_q);
 
@@ -303,14 +307,17 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
     {
         //得到第i个激光束的角度插值，线性插值需要步长、起始和结束数据,与该激光点坐标系和里程计坐标系的夹角
         mid_angle =  tf2::getYaw(start_angle_q.slerp(end_angle_q, beam_step * i));  //slerp（）角度线性插值函数
+        ROS_INFO("--index = %d, mid angle = %f", i, mid_angle);
         //得到第i个激光束的近似的里程计位姿线性插值
         mid_pos = start_pos.lerp(end_pos, beam_step * i);  //lerp（），位姿线性插值函数
+        ROS_INFO("--mid_pose: x = %f, y = %f", mid_pos.getX(), mid_pos.getY());
         //如果激光束距离不等于无穷,则需要进行矫正
         if( std::isinf(ranges[startIndex + i]) == false)
         {
             //取出该分段中该束激光距离和角度
             lidar_dist  =  ranges[startIndex+i];
             lidar_angle =  angles[startIndex+i];
+            ROS_INFO("lidar_dist = %f, lidar_angle = %f", lidar_dist, lidar_angle);
             //在当前帧的激光雷达坐标系下，该激光点的坐标 （真实的、实际存在的、但不知道具体数值）
             double laser_x,laser_y;
             laser_x = lidar_dist * cos(lidar_angle);
@@ -320,6 +327,8 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
             double  cos_ , sin_;
             cos_ = cos(mid_angle);
             sin_ = sin(mid_angle);
+
+            // ROS_INFO_STREAM_COND(i%10 == 0, "beam index = " << i << ", mid angle = " << mid_angle);
 
             odom_x = laser_x * cos_ - laser_y * sin_ + mid_pos.x();
             odom_y = laser_x * sin_ + laser_y * cos_ + mid_pos.y();
@@ -345,6 +354,8 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
             //激光雷达被矫正
             ranges[startIndex+i] = lidar_dist;
             angles[startIndex+i] = lidar_angle;
+
+            ROS_INFO("---index = %d, angle = %f", startIndex+i, lidar_angle);
         }
         //如果等于无穷,则随便计算一下角度
         else
@@ -377,6 +388,8 @@ void LidarMotionCalibrator::visual_cloud_scan(std::vector<double> ranges_,const 
         pt.x = ranges_[i] * cos(angles_[i]);
         pt.y = ranges_[i] * sin(angles_[i]);
         pt.z = 1.0;
+
+        ROS_INFO("angle index = %d, angle value = %f", i, angles_[i]);
 
         // pack r/g/b into rgb
         unsigned int rgb = ((unsigned int)r << 16 | (unsigned int)g << 8 | (unsigned int)b);
