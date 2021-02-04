@@ -168,7 +168,7 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
     //激光束的数量
     int beamNumber = ranges.size();
     //分段时间间隔，单位us
-    int interpolation_time_duration = 5 * 1000;//单位us
+    int interpolation_time_duration = 500 * 1000;//单位us
 
     // tf::Stamped<tf::Pose> frame_base_pose; //基准坐标系原点位姿
     geometry_msgs::PoseStamped frame_base_pose; //基准坐标系原点位姿
@@ -225,7 +225,7 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
                 return ;
             }
             //计算该分段需要插值的个数
-            int interp_count = i + 1 - start_index ; 
+            int interp_count = i - start_index ; 
             //对本分段的激光点进行运动畸变的去除
             lidarMotionCalibration(frame_base_pose,  //对于一帧激光雷达数据，传入参数基准坐标系是不变的
                                     frame_start_pose, //每一次的传入，都代表新分段的开始位姿，第一个分段，根据时间戳，在tf树上获得，其他分段都为上一段的结束点传递
