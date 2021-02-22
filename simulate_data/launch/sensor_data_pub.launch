@@ -1,6 +1,6 @@
 <launch>
   
-  <node pkg="tf" type="static_transform_publisher" name="laser_link_broadcaster" args="0 0 0.17 0 0 0  base_link laser_link 10" />
+  <node pkg="tf" type="static_transform_publisher" name="laser_link_broadcaster" args="0 0 0.17 3.1416 0 0  base_link laser_link 10" />
 
   <node pkg="tf" type="static_transform_publisher" name="imu_link_broadcaster" args="0 0 1 0 0 0 base_link imu_link 10" />
 

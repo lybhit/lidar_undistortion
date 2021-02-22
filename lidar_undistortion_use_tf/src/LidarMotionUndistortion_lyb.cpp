@@ -168,7 +168,7 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges,std::ve
     //激光束的数量
     int beamNumber = ranges.size();
     //分段时间间隔，单位us
-    int interpolation_time_duration = 500 * 1000;//单位us
+    int interpolation_time_duration = 50 * 1000;//单位us
 
     // tf::Stamped<tf::Pose> frame_base_pose; //基准坐标系原点位姿
     geometry_msgs::PoseStamped frame_base_pose; //基准坐标系原点位姿
@@ -279,7 +279,7 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
     ROS_INFO("-----");
     //beam_step插值函数所用的步长
     double beam_step = 1.0 / (beam_number-1);
-    ROS_INFO("beam_number = %f", beam_step);
+    ROS_INFO("beam_number = %f", beam_number);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度 和 结束角度，四元数表示
     tf2::Quaternion start_angle_q;
     tf2::convert(frame_start_pose.pose.orientation, start_angle_q);
@@ -288,6 +288,8 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
     tf2::convert(frame_end_pose.pose.orientation, end_angle_q);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度、该帧激光数据在里程计坐标系下基准坐标系位姿的角度，弧度表示
     double  start_angle_r = tf2::getYaw(start_angle_q);
+    double  end_angle_r = tf2::getYaw(end_angle_q);
+    ROS_INFO("start_angle_r = %f, end_angle_r = %f", start_angle_r, end_angle_r);
 
     tf2::Quaternion frame_base_pose_q;
     tf2::convert(frame_base_pose.pose.orientation, frame_base_pose_q);
