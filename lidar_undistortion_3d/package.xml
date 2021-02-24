@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>lidar_undistortion</name>
+  <name>lidar_undistortion_3d</name>
   <version>1.0.0</version>
-  <description>Lidar undistortion</description>
+  <description>Lidar undistortion 3d</description>
 
   <maintainer email="lybhit@gmail.com">liyb</maintainer>
   <license>TODO</license>

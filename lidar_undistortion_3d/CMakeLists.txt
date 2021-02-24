@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(lidar_undistortion)
+project(lidar_undistortion_3d)
 
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++11")

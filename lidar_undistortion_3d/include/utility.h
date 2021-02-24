@@ -80,10 +80,10 @@ public:
     string mapFrame;
 
     // GPS Settings
-    bool useImuHeadingInitialization;
-    bool useGpsElevation;
-    float gpsCovThreshold;
-    float poseCovThreshold;
+    // bool useImuHeadingInitialization;
+    // bool useGpsElevation;
+    // float gpsCovThreshold;
+    // float poseCovThreshold;
 
     // Save pcd
     bool savePCD;
@@ -131,24 +131,24 @@ public:
     double mappingProcessInterval;
 
     // Surrounding map
-    float surroundingkeyframeAddingDistThreshold; 
-    float surroundingkeyframeAddingAngleThreshold; 
-    float surroundingKeyframeDensity;
-    float surroundingKeyframeSearchRadius;
+    // float surroundingkeyframeAddingDistThreshold; 
+    // float surroundingkeyframeAddingAngleThreshold; 
+    // float surroundingKeyframeDensity;
+    // float surroundingKeyframeSearchRadius;
     
     // Loop closure
-    bool  loopClosureEnableFlag;
-    float loopClosureFrequency;
-    int   surroundingKeyframeSize;
-    float historyKeyframeSearchRadius;
-    float historyKeyframeSearchTimeDiff;
-    int   historyKeyframeSearchNum;
-    float historyKeyframeFitnessScore;
+    // bool  loopClosureEnableFlag;
+    // float loopClosureFrequency;
+    // int   surroundingKeyframeSize;
+    // float historyKeyframeSearchRadius;
+    // float historyKeyframeSearchTimeDiff;
+    // int   historyKeyframeSearchNum;
+    // float historyKeyframeFitnessScore;
 
     // global map visualization radius
-    float globalMapVisualizationSearchRadius;
-    float globalMapVisualizationPoseDensity;
-    float globalMapVisualizationLeafSize;
+    // float globalMapVisualizationSearchRadius;
+    // float globalMapVisualizationPoseDensity;
+    // float globalMapVisualizationLeafSize;
 
     ParamServer()
     {
@@ -157,7 +157,7 @@ public:
         nh.param<std::string>("lio_sam/pointCloudTopic", pointCloudTopic, "points_raw");
         nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
         nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
-        nh.param<std::string>("lio_sam/gpsTopic", gpsTopic, "odometry/gps");
+        // nh.param<std::string>("lio_sam/gpsTopic", gpsTopic, "odometry/gps");
 
         nh.param<std::string>("lio_sam/lidarFrame", lidarFrame, "base_link");
         nh.param<std::string>("lio_sam/baselinkFrame", baselinkFrame, "base_link");
@@ -209,37 +209,37 @@ public:
         extTrans = Eigen::Map<const Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(extTransV.data(), 3, 1);
         extQRPY = Eigen::Quaterniond(extRPY);
 
-        nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
-        nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
-        nh.param<int>("lio_sam/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
-        nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
+        // nh.param<float>("lio_sam/edgeThreshold", edgeThreshold, 0.1);
+        // nh.param<float>("lio_sam/surfThreshold", surfThreshold, 0.1);
+        // nh.param<int>("lio_sam/edgeFeatureMinValidNum", edgeFeatureMinValidNum, 10);
+        // nh.param<int>("lio_sam/surfFeatureMinValidNum", surfFeatureMinValidNum, 100);
 
-        nh.param<float>("lio_sam/odometrySurfLeafSize", odometrySurfLeafSize, 0.2);
-        nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
-        nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
+        // nh.param<float>("lio_sam/odometrySurfLeafSize", odometrySurfLeafSize, 0.2);
+        // nh.param<float>("lio_sam/mappingCornerLeafSize", mappingCornerLeafSize, 0.2);
+        // nh.param<float>("lio_sam/mappingSurfLeafSize", mappingSurfLeafSize, 0.2);
 
         nh.param<float>("lio_sam/z_tollerance", z_tollerance, FLT_MAX);
         nh.param<float>("lio_sam/rotation_tollerance", rotation_tollerance, FLT_MAX);
 
-        nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
-        nh.param<double>("lio_sam/mappingProcessInterval", mappingProcessInterval, 0.15);
+        // nh.param<int>("lio_sam/numberOfCores", numberOfCores, 2);
+        // nh.param<double>("lio_sam/mappingProcessInterval", mappingProcessInterval, 0.15);
 
-        nh.param<float>("lio_sam/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
-        nh.param<float>("lio_sam/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
-        nh.param<float>("lio_sam/surroundingKeyframeDensity", surroundingKeyframeDensity, 1.0);
-        nh.param<float>("lio_sam/surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius, 50.0);
+        // nh.param<float>("lio_sam/surroundingkeyframeAddingDistThreshold", surroundingkeyframeAddingDistThreshold, 1.0);
+        // nh.param<float>("lio_sam/surroundingkeyframeAddingAngleThreshold", surroundingkeyframeAddingAngleThreshold, 0.2);
+        // nh.param<float>("lio_sam/surroundingKeyframeDensity", surroundingKeyframeDensity, 1.0);
+        // nh.param<float>("lio_sam/surroundingKeyframeSearchRadius", surroundingKeyframeSearchRadius, 50.0);
 
-        nh.param<bool>("lio_sam/loopClosureEnableFlag", loopClosureEnableFlag, false);
-        nh.param<float>("lio_sam/loopClosureFrequency", loopClosureFrequency, 1.0);
-        nh.param<int>("lio_sam/surroundingKeyframeSize", surroundingKeyframeSize, 50);
-        nh.param<float>("lio_sam/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
-        nh.param<float>("lio_sam/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
-        nh.param<int>("lio_sam/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
-        nh.param<float>("lio_sam/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
+        // nh.param<bool>("lio_sam/loopClosureEnableFlag", loopClosureEnableFlag, false);
+        // nh.param<float>("lio_sam/loopClosureFrequency", loopClosureFrequency, 1.0);
+        // nh.param<int>("lio_sam/surroundingKeyframeSize", surroundingKeyframeSize, 50);
+        // nh.param<float>("lio_sam/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
+        // nh.param<float>("lio_sam/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
+        // nh.param<int>("lio_sam/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
+        // nh.param<float>("lio_sam/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
 
-        nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
-        nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
-        nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
+        // nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
+        // nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
+        // nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
         usleep(100);
     }
