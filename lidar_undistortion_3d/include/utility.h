@@ -234,7 +234,7 @@ public:
         // nh.param<int>("lio_sam/surroundingKeyframeSize", surroundingKeyframeSize, 50);
         // nh.param<float>("lio_sam/historyKeyframeSearchRadius", historyKeyframeSearchRadius, 10.0);
         // nh.param<float>("lio_sam/historyKeyframeSearchTimeDiff", historyKeyframeSearchTimeDiff, 30.0);
-        // nh.param<int>("lio_sam/historyKeyframeSearchNuuseImuHeadingInitializationm", historyKeyframeSearchNum, 25);
+        // nh.param<int>("lio_sam/historyKeyframeSearchNum", historyKeyframeSearchNum, 25);
         // nh.param<float>("lio_sam/historyKeyframeFitnessScore", historyKeyframeFitnessScore, 0.3);
 
         // nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
