@@ -2,8 +2,8 @@ lidar_undistortion_3d:
 
   # Topics
   pointCloudTopic: "velodyne_points"               # Point cloud data
-  imuTopic: "imu_raw"                         # IMU data
-  odomTopic: "bdf07/imu_data"                   # IMU pre-preintegration odometry, same frequency as IMU
+  imuTopic: "bdf07/imu_data"                         # IMU data
+  odomTopic: "odom"                   # IMU pre-preintegration odometry, same frequency as IMU
   gpsTopic: "odometry/gpsz"                   # GPS odometry topic from navsat, see module_navsat.launch file
 
   # Frames

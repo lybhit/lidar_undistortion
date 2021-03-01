@@ -502,6 +502,7 @@ public:
         }
 
         // transform points to start
+        // 把数据投影到第一个激光点处
         Eigen::Affine3f transFinal = pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur);
         Eigen::Affine3f transBt = transStartInverse * transFinal;
 
