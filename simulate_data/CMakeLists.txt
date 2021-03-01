@@ -42,6 +42,8 @@ target_link_libraries(scan_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(scan_handle_node src/scan_handle_node.cpp)
+target_link_libraries(scan_handle_node  ${catkin_LIBRARIES})
 
 add_executable(odom_node src/odom_node.cpp)
 
