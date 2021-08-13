@@ -34,9 +34,8 @@ public:
     //从tf缓存数据中，寻找对应时间戳的里程计位姿
     bool getLaserPose(geometry_msgs::PoseStamped & odom_pose, ros::Time dt);
     //根据传入参数，对任意一个分段进行插值
-    void lidarMotionCalibration(geometry_msgs::PoseStamped frame_base_pose,geometry_msgs::PoseStamped frame_start_pose,geometry_msgs::PoseStamped frame_end_pose,
-                                 std::vector<double>& ranges,std::vector<double>& angles,
-                                 int startIndex, int& beam_number);
+    void lidarMotionCalibration(geometry_msgs::PoseStamped frame_target_pose, geometry_msgs::PoseStamped frame_source_pose,
+                                 std::vector<double>& ranges, std::vector<double>& angles, int startIndex);
 public:
     std::shared_ptr<tf2_ros::TransformListener> tfl_;
     std::shared_ptr<tf2_ros::Buffer> tf_;

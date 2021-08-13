@@ -22,10 +22,9 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges, std::v
     //分段时间间隔，单位us
     int interpolation_time_duration = 5 * 1000;//单位us
 
-    // tf::Stamped<tf::Pose> frame_base_pose; //基准坐标系原点位姿
-    geometry_msgs::PoseStamped frame_base_pose; //基准坐标系原点位姿
-    geometry_msgs::PoseStamped frame_start_pose;
-    geometry_msgs::PoseStamped frame_mid_pose;
+    geometry_msgs::PoseStamped frame_target_pose; //基准坐标系原点位姿
+    geometry_msgs::PoseStamped frame_start_pose;  //激光起始点位姿
+    geometry_msgs::PoseStamped frame_source_pose; //激光当前投影点位姿
 
     double start_time = startTime.toSec() * 1000 * 1000;      //*1000*1000转化时间单位为us
     // double end_time   = endTime.toSec() * 1000 * 1000;
@@ -42,9 +41,9 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges, std::v
     }
 
     //直接获取最后一束激光作为基准坐标原点位姿
-    if(getLaserPose(frame_base_pose, endTime))
+    if(getLaserPose(frame_target_pose, endTime))
     {
-        ROS_INFO("end_pose: x = %f, y = %f", frame_base_pose.pose.position.x, frame_base_pose.pose.position.y);
+        ROS_INFO("end_pose: x = %f, y = %f", frame_target_pose.pose.position.x, frame_target_pose.pose.position.y);
     }else{
         ROS_INFO("Not end Pose, Can not Calib");
         return ;
@@ -56,74 +55,48 @@ void LidarMotionCalibrator::lidarCalibration(std::vector<double>& ranges, std::v
 
     for(int i = 0; i < beamNumber; i++)
     {
-        //按照分割时间分段，分割时间大小为interpolation_time_duration
         double mid_time = start_time + time_inc_mul * i;
-        //这里的mid_time、start_time多次重复利用
-        // if(mid_time - start_time > interpolation_time_duration || (i == beamNumber - 1))
-        // {
-            cnt++;
-            //得到临时结束点的laser_link在里程计坐标系下的位姿，存放到frame_mid_pose
-            if(!getLaserPose(frame_mid_pose, ros::Time(mid_time/1000000.0)))
-            {
-                ROS_ERROR("Mid %d Pose Error",cnt);
-                return ;
-            }
-            //计算该分段需要插值的个数
-            int interp_count = i - start_index; 
-            //对本分段的激光点进行运动畸变的去除
-            lidarMotionCalibration(frame_base_pose,  //对于一帧激光雷达数据，传入参数基准坐标系是不变的
-                                    frame_start_pose, //每一次的传入，都代表新分段的开始位姿，第一个分段，根据时间戳，在tf树上获得，其他分段都为上一段的结束点传递
-                                    frame_mid_pose,   //每一次的传入，都代表新分段的结束位姿，根据时间戳，在tf树上获得
-                                    ranges,           //引用对象，需要被修改的距离数组
-                                    angles,           //引用对象，需要被修改的角度数组
-                                    i,      //每一次的传入，都代表新分段的开始序号
-                                    interp_count);    //每一次的传入，都代表该新分段需要线性插值的个数
-            //更新时间
-            // start_time = mid_time;
-            // start_index = i;     
-            // frame_start_pose = frame_mid_pose;        //将上一分段的结束位姿，传递为下一分段的开始位姿
-        // }
+        cnt++;
+        //得到临时结束点的laser_link在里程计坐标系下的位姿，存放到frame_source_pose
+        if(!getLaserPose(frame_source_pose, ros::Time(mid_time/1000000.0)))
+        {
+            ROS_ERROR("Mid %d Pose Error",cnt);
+            return ;
+        }
+        //计算该分段需要插值的个数
+        int interp_count = i - start_index; 
+        //对本分段的激光点进行运动畸变的去除
+        lidarMotionCalibration(frame_target_pose, //对于一帧激光雷达数据，传入参数基准坐标系是不变的 
+                                frame_source_pose,//每一次的传入，当前处理激光数据的位姿，在tf树上获得
+                                ranges,           //引用对象，需要被修改的距离数组
+                                angles,           //引用对象，需要被修改的角度数组
+                                i);               //每次处理的激光数据的索引
     }
 
     // std::cout << "ranges size = " << ranges.size() << std::endl;
 }
 
 //根据传入参数，对任意一个分段进行插值
-void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped frame_base_pose,geometry_msgs::PoseStamped frame_start_pose, geometry_msgs::PoseStamped frame_end_pose,
-                                                    std::vector<double>& ranges,std::vector<double>& angles,
-                                                    int startIndex,int& beam_number)
+void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped frame_target_pose, geometry_msgs::PoseStamped frame_source_pose, std::vector<double>& ranges,std::vector<double>& angles, int startIndex)
 {
-    //beam_step插值函数所用的步长
-    // double beam_step = 1.0 / (beam_number-1);
-    //该分段中，在里程计坐标系下，laser_link位姿的起始角度 和 结束角度，四元数表示
-    tf2::Quaternion start_angle_q;
-    tf2::convert(frame_start_pose.pose.orientation, start_angle_q);
-
     tf2::Quaternion end_angle_q;
-    tf2::convert(frame_end_pose.pose.orientation, end_angle_q);
+    tf2::convert(frame_source_pose.pose.orientation, end_angle_q);
     //该分段中，在里程计坐标系下，laser_link位姿的起始角度、该帧激光数据在里程计坐标系下基准坐标系位姿的角度，弧度表示
-    double  start_angle_r = tf2::getYaw(end_angle_q);
+    double start_angle_r = tf2::getYaw(end_angle_q);
 
-    tf2::Quaternion frame_base_pose_q;
-    tf2::convert(frame_base_pose.pose.orientation, frame_base_pose_q);
-    double   base_angle_r = tf2::getYaw(frame_base_pose_q);
-    //该分段中，在里程计坐标系下，laser_link位姿的起始位姿、结束位姿，以及该帧激光数据在里程计坐标系下基准坐标系的位姿
-    tf2::Vector3 start_pos(frame_start_pose.pose.position.x, frame_start_pose.pose.position.y, frame_start_pose.pose.position.z); start_pos.setZ(0);
-    tf2::Vector3   end_pos(frame_end_pose.pose.position.x, frame_end_pose.pose.position.y, frame_end_pose.pose.position.z);   end_pos.setZ(0);   
-    tf::Vector3  base_pos(frame_base_pose.pose.position.x, frame_base_pose.pose.position.y, frame_base_pose.pose.position.z);  base_pos.setZ(0);
+    tf2::Quaternion frame_target_pose_q;
+    tf2::convert(frame_target_pose.pose.orientation, frame_target_pose_q);
+    double base_angle_r = tf2::getYaw(frame_target_pose_q);
+
+    tf2::Vector3  end_pos(frame_source_pose.pose.position.x, frame_source_pose.pose.position.y, frame_source_pose.pose.position.z);   end_pos.setZ(0);   
+    tf::Vector3  base_pos(frame_target_pose.pose.position.x, frame_target_pose.pose.position.y, frame_target_pose.pose.position.z);  base_pos.setZ(0);
     //临时变量
     double mid_angle;
     tf2::Vector3 mid_pos;
     tf2::Vector3 mid_point;
     double lidar_angle, lidar_dist;
 
-    //beam_number为该分段中需要插值的激光束的个数
-    // for(int i = 0; i< beam_number;i++)
     {
-        //得到第i个激光束的角度插值，线性插值需要步长、起始和结束数据,与该激光点坐标系和里程计坐标系的夹角
-        // mid_angle =  tf2::getYaw(start_angle_q.slerp(end_angle_q, beam_step * i));  //slerp（）角度线性插值函数
-        //得到第i个激光束的近似的里程计位姿线性插值
-        // mid_pos = start_pos.lerp(end_pos, beam_step * i);  //lerp（），位姿线性插值函数
         mid_angle = start_angle_r;
         mid_pos = end_pos;
         //如果激光束距离不等于无穷,则需要进行矫正
@@ -169,17 +142,11 @@ void LidarMotionCalibrator::lidarMotionCalibration(geometry_msgs::PoseStamped fr
             ranges[startIndex] = lidar_dist;
             angles[startIndex] = lidar_angle;
         }
-        //如果等于无穷,则随便计算一下角度
         else
         {
-            // double tmp_angle;            
-            // lidar_angle = angles[startIndex];
-            // //里程计坐标系的角度
-            // tmp_angle = mid_angle + lidar_angle;
-            // tmp_angle = tfNormalizeAngle(tmp_angle);
-            // //如果数据非法 则只需要设置角度就可以了。把角度换算成start_pos坐标系内的角度
-            // lidar_angle = tfNormalizeAngle(tmp_angle - start_angle_r);
-            // angles[startIndex] = lidar_angle;
+            /*
+              Todo something useful. 
+            */
         }
     }
 }
